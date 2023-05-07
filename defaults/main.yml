@@ -1,2 +1,9 @@
 ---
-# defaults file for template
+
+enable_ipv4_forwarding: true
+enable_ipv6_forwarding: false
+
+wireguard_key_filename: "{{ ansible_hostname }}"
+wireguard_create_keys: true
+
+wireguard: {}

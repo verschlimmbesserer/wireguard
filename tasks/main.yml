@@ -1,2 +1,27 @@
 ---
-# tasks file for template
+
+- name: "Enable IPv6 forwarding"
+  ansible.posix.sysctl:
+    name: net.ipv6.conf.all.forwarding
+    value: '1'
+    sysctl_set: true
+    state: present
+  when: enable_ipv6_forwarding
+
+- name: "Enable IPv4 forward"
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    sysctl_set: true
+    state: present
+    reload: true
+  when: enable_ipv4_forwarding
+
+- name: "include tasks for {{ ansible_os_family }}"
+  ansible.builtin.include_tasks: "{{ ansible_os_family | lower }}.yml"
+
+- name: "include tasks to generate private and public wireguard keys"
+  ansible.builtin.include_tasks: configure_wireguard.yml
+  loop: "{{ wireguard.keys()|list }}"
+  loop_control:
+    loop_var: wg_item

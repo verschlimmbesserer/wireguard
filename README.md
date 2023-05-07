@@ -1,7 +1,8 @@
-Role Name
+Wireguard
 =========
 
-A brief description of the role goes here.
+This role installs `wireguard` and generates the nessesary keys as the configurations as well.
+It uses the  `ansible.builtin.slurp` collection to pickup the generated private and public keys. If the files exists or after the got generated. It is also possible to use a pre generated Private Key in the interface dictionary under the wireguard variable.
 
 Requirements
 ------------
@@ -11,7 +12,55 @@ Any pre-requisites that may not be covered by Ansible itself or the role should 
 Role Variables
 --------------
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+|name|type|function|
+|---|---|---|
+|`wireguard_public_key_prefix:`| str | prefix for the wireguard public key|
+| `wireguard_key_filename:`| str | name used for the key filenames, when not set will default to `{{ ansible_hostname }}`|
+|`wireguard_create_keys:`| bool | By default Ansible will attempt to creaet the wireguard private and public key. |
+|`wireguard`| dict | contains the configuration for the `wg0.conf` with the keys `interface` and `peers` which contains each `peer` as dictionary.|
+
+Example Variables Configuration
+------------
+
+Site 2 Site VPN, when both Host are managed by Ansible in the same group.
+Host in the US:
+
+```Yaml
+wireguard_private_key_name: "{{ ansible_hostname }}"
+wireguard_create_keys: true
+
+wireguard:
+  interface:
+    ListenPort: 51820
+    Address: 10.10.9.2/32
+    PostUp: iptables -A FORWARD -i wg0 -j ACCEPT
+    PostDown: iptables -D FORWARD -i wg0 -j ACCEPT
+  peers:
+    wg01-euro:
+      PersistentKeepalive: 25
+      Endpoint: "{{ hostvars['wg01-euro']['ansible_default_ipv4.address'] }}:51820"
+      PublicKey: "{{ hostvars['wg01-euro']['wg_public_key']}}"
+      AllowedIPs: 10.10.0.0/24,10.10.9.0/30
+```
+
+Host in Europe:
+```Yaml
+wireguard_private_key_name: "{{ ansible_hostname }}"
+wireguard_create_keys: true
+
+wireguard:
+  interface:
+    ListenPort: 51820
+    Address: 10.10.9.1/32
+    PostUp: iptables -A FORWARD -i wg0 -j ACCEPT
+    PostDown: iptables -D FORWARD -i wg0 -j ACCEPT
+  peers:
+    wg01-usa:
+      PersistentKeepalive: 25
+      Endpoint: "{{ hostvars['wg01-usa']['ansible_default_ipv4.address'] }}:51820"
+      PublicKey: "{{ hostvars['wg01-usa']['wg_public_key']}}"
+      AllowedIPs: 10.10.0.0/24,10.10.9.0/30
+```
 
 Dependencies
 ------------

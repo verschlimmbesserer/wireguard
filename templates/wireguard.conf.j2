@@ -1,0 +1,22 @@
+[Interface]
+PrivateKey = {{ wg.interface.PrivateKey | default(wg_private_key) }}
+{% for opt, val in wg.interface.items() %}
+{% if opt != 'PrivateKey' %}
+{{ opt }} = {{ val }}
+{% endif %}
+{% endfor %}
+
+{% if wg.peers.keys() | length > 0 %}
+{% for peer in wg.peers %}
+# {{ peer }}
+[Peer]
+{% for opt, val in wg.peers[peer].items() %}
+{% if opt == 'PublicKey' and not opt | length == 44   %}
+PublicKey = {{ hostvars[val]['wg_public_key'] }}
+{% else %}
+{{ opt }} = {{ val }}
+{% endif %}
+{% endfor %}
+
+{% endfor %}
+{% endif %}

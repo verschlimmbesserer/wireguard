@@ -1,2 +1,14 @@
 ---
-# handlers file for template
+
+- name: start wg
+  ansible.builtin.systemd:
+    state: started
+    name: "wg-quick@{{ item }}.service"
+    enabled: yes
+  with_items: "{{ wireguard.keys() }}"
+
+- name: restart wg
+  ansible.builtin.systemd:
+    state: restarted
+    name: "wg-quick@{{ item }}.service"
+  with_items: "{{ wireguard.keys() }}"

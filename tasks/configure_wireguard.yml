@@ -1,0 +1,48 @@
+---
+
+---
+
+- name: "Set facts for {{ wg_item }} interface"
+  set_fact:
+    wg: "{{ wireguard[wg_item] }}"
+
+- name: "Check if wireguard private key for {{ wg_item }} already exists"
+  ansible.builtin.stat:
+    path: "/etc/wireguard/{{ wireguard_key_filename | default(ansible_hostname )}}-{{ wg_item }}.key"
+  register: privatekey_file
+
+- name: Gen vanity keys
+  ansible.builtin.shell: |
+    wg genkey > /etc/wireguard/{{ wireguard_key_filename | default(ansible_hostname )}}-{{ wg_item }}.key;
+    wg pubkey < /etc/wireguard/{{ wireguard_key_filename | default(ansible_hostname )}}-{{ wg_item }}.key > /etc/wireguard/{{ wireguard_key_filename | default(ansible_hostname )}}-{{ wg_item }}.pub
+  args:
+    executable: /bin/bash
+  when: not privatekey_file.stat.exists
+
+- name: get private key from file
+  ansible.builtin.slurp:
+    src: /etc/wireguard/{{ wireguard_key_filename | default(ansible_hostname )}}-{{ wg_item }}.key
+  register: priv_key
+
+- name: get private key from file
+  ansible.builtin.slurp:
+    src: /etc/wireguard/{{ wireguard_key_filename | default(ansible_hostname )}}-{{ wg_item }}.pub
+  register: pub_key
+
+- name: create variable with private key
+  ansible.builtin.set_fact:
+    wg_private_key: "{{ priv_key.content | b64decode | trim }}"
+
+- name: create variable with private key
+  ansible.builtin.set_fact:
+    wg_public_key: "{{ pub_key.content | b64decode | trim }}"
+
+- name: create wireguard config
+  ansible.builtin.template:
+    src: wireguard.conf.j2
+    dest: "/etc/wireguard/{{ wg_item }}.conf"
+    owner: root
+    group: root
+  notify:
+    - start wg
+    - restart wg
