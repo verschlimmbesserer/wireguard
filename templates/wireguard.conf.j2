@@ -1,3 +1,4 @@
+{% set skip_keys = ["PrivateKey", "PublicKey", "PresharedKey"] %}
 [Interface]
 PrivateKey = {{ wg.interface.PrivateKey | default(wg_private_key) }}
 {% for opt, val in wg.interface.items() %}

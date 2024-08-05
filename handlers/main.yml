@@ -1,14 +1,14 @@
 ---
 
-- name: start wg
+- name: Start wireguard
   ansible.builtin.systemd:
     state: started
     name: "wg-quick@{{ item }}.service"
-    enabled: yes
-  with_items: "{{ wireguard.keys() }}"
+    enabled: true
+  with_items: "{{ wireguard_config.keys() }}"
 
-- name: restart wg
+- name: Restart wireguard
   ansible.builtin.systemd:
     state: restarted
     name: "wg-quick@{{ item }}.service"
-  with_items: "{{ wireguard.keys() }}"
+  with_items: "{{ wireguard_config.keys() }}"

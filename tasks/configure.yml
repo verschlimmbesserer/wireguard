@@ -1,0 +1,75 @@
+---
+
+- name: "Set facts for {{ wg_item }}"
+  ansible.builtin.set_fact:
+    wg: "{{ wireguard_config[wg_item] }}"
+    wg_filename: "{{ wireguard_key_filename | default(ansible_hostname) }}-{{ wg_item }}"
+
+
+- name: "Generate Wireguard PreSharedKey Pairs"
+  when: wireguard_generate_presharedkey
+  block:
+
+    - name: "Generate PreSharedKey for {{ wg_item }}"
+      ansible.builtin.shell: wg genpsk > /etc/wireguard/{{ wg_filename }}-preshared.key
+      args:
+        executable: "/bin/bash"
+      register: wg_presharekey
+      changed_when: wg_presharekey.rc != 1
+
+    - name: Get preshared key from file
+      ansible.builtin.slurp:
+        src: "/etc/wireguard/{{ wg_filename }}-preshared.key"
+      register: preshared_key
+
+    - name: Create variable with preshared key
+      ansible.builtin.set_fact:
+        wg_public_key: "{{ presharekey.content | b64decode | trim }}"
+
+- name: "Generate Wireguard Key Pairs"
+  when: wireguard_generate_keys
+  block:
+
+    - name: "Check if wireguard private.key file exists for {{ wg_item }}"
+      ansible.builtin.stat:
+        path: "/etc/wireguard/{{ wg_filename }}.key"
+      register: privatekey_file
+
+    - name: Generate vanity keys
+      ansible.builtin.shell: |
+        wg genkey > /etc/wireguard/{{ wg_filename }}.key;
+        wg pubkey < /etc/wireguard/{{ wg_filename }}.key > /etc/wireguard/{{ wg_filename }}.pub
+      args:
+        executable: "/bin/bash"
+      register: wg_keys_gen
+      changed_when: wg_keys_gen.rc != 1
+      when: not privatekey_file.stat.exists and wireguard_generate_keys
+
+    - name: Get private key from file
+      ansible.builtin.slurp:
+        src: "/etc/wireguard/{{ wg_filename }}.key"
+      register: priv_key
+
+    - name: Get public key from file
+      ansible.builtin.slurp:
+        src: "/etc/wireguard/{{ wg_filename }}.pub"
+      register: pub_key
+
+    - name: Create variable with private key
+      ansible.builtin.set_fact:
+        wg_private_key: "{{ priv_key.content | b64decode | trim }}"
+
+    - name: Create variable with public key
+      ansible.builtin.set_fact:
+        wg_public_key: "{{ pub_key.content | b64decode | trim }}"
+
+- name: Create wireguard config
+  ansible.builtin.template:
+    src: wireguard.conf.j2
+    dest: "/etc/wireguard/{{ wg_item }}.conf"
+    owner: root
+    group: root
+    mode: "0600"
+  notify:
+    - Start wireguard
+    - Restart wireguard
